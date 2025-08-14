@@ -1,40 +1,284 @@
--- GXScript Hub — Entrance UI Transparent + Darkie GitLab spawner
+--== GXScript Hub (Elegant Neon Gradient) ==--
 
--- clean previous
+-- Clean previous
 pcall(function() if game.CoreGui:FindFirstChild("GXScriptHub") then game.CoreGui.GXScriptHub:Destroy() end end)
 
--- services
+-- Services
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
 local RS = game:GetService("RunService")
-local Tween = game:GetService("TweenService")
+local TweenService = game:GetService("TweenService")
 local StarterGui = game:GetService("StarterGui")
 local LP = Players.LocalPlayer
 
--- theme colors
-local ACCENT = Color3.fromRGB(35, 220, 120)
-local ACCENT_DARK = Color3.fromRGB(22, 120, 65)
-local BG = Color3.fromRGB(14, 14, 14)
+-- Theme
+local ACCENT = Color3.fromRGB(40, 220, 120)
+local ACCENT_DARK = Color3.fromRGB(20, 130, 80)
+local BG = Color3.fromRGB(16, 16, 16)
 local BG_SOFT = Color3.fromRGB(24, 24, 24)
-local TEXT = Color3.fromRGB(235, 245, 235)
+local TEXT = Color3.fromRGB(235, 255, 245)
 
--- helpers
-local function corner(inst, radius) local c = Instance.new("UICorner"); c.CornerRadius = UDim.new(0, radius or 8); c.Parent = inst end
-local function stroke(inst, th, col, tr) local s = Instance.new("UIStroke"); s.Thickness = th or 1; s.Color = col or Color3.fromRGB(60,60,60); s.Transparency = tr or 0.2; s.Parent = inst end
-local function notify(msg, t) pcall(function() StarterGui:SetCore("SendNotification", {Title="GXScript", Text=msg, Duration=t or 3}) end) end
+-- Helper functions
+local function notify(msg, t)
+    pcall(function() StarterGui:SetCore("SendNotification", {Title="GXScript", Text=msg, Duration=t or 3}) end)
+end
+local function corner(p, r) local c=Instance.new("UICorner"); c.CornerRadius=UDim.new(0, r or 10); c.Parent=p end
+local function stroke(p, th, col, tr) local s=Instance.new("UIStroke"); s.Thickness=th or 1; s.Color=col or Color3.fromRGB(60,60,60); s.Transparency=tr or 0.15; s.ApplyStrokeMode=Enum.ApplyStrokeMode.Border; s.Parent=p end
+local function gradient(p, c1, c2) local g=Instance.new("UIGradient"); g.Color=ColorSequence.new({ColorSequenceKeypoint.new(0,c1), ColorSequenceKeypoint.new(1,c2)}); g.Rotation=45; g.Parent=p end
 
--- drag utility
-local function MakeDraggable(frame)
-    local dragging, inputDrag, startPos, startMouse
-    frame.InputBegan:Connect(function(inp)
-        if inp.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = true
-            startMouse = inp.Position
-            startPos = frame.Position
-            inp.Changed:Connect(function()
-                if inp.UserInputState == Enum.UserInputState.End then dragging = false end
+local function makeDraggable(frame)
+    local dragging, dragInput, startPos, startInputPos
+    frame.InputBegan:Connect(function(input)
+        if input.UserInputType==Enum.UserInputType.MouseButton1 then
+            dragging=true
+            startPos=frame.Position
+            startInputPos=input.Position
+            input.Changed:Connect(function()
+                if input.UserInputState==Enum.UserInputState.End then dragging=false end
             end)
         end
+    end)
+    frame.InputChanged:Connect(function(input)
+        if input.UserInputType==Enum.UserInputType.MouseMovement then dragInput=input end
+    end)
+    UIS.InputChanged:Connect(function(input)
+        if input==dragInput and dragging then
+            local delta=input.Position-startInputPos
+            frame.Position=UDim2.new(startPos.X.Scale, startPos.X.Offset+delta.X, startPos.Y.Scale, startPos.Y.Offset+delta.Y)
+        end
+    end)
+end
+
+-- ScreenGui
+local SG = Instance.new("ScreenGui")
+SG.Name = "GXScriptHub"
+SG.ResetOnSpawn=false
+SG.IgnoreGuiInset=true
+SG.Parent=game.CoreGui
+
+----------------------------------------------------------------
+-- Entrance UI
+----------------------------------------------------------------
+local Entrance = Instance.new("Frame")
+Entrance.Size=UDim2.fromScale(1,1)
+Entrance.BackgroundColor3=BG
+Entrance.BackgroundTransparency=0.3 -- slightly transparent
+Entrance.Parent=SG
+
+local Glow = Instance.new("ImageLabel")
+Glow.Size=UDim2.new(0,600,0,600)
+Glow.Position=UDim2.new(0.5,-300,0.5,-300)
+Glow.BackgroundTransparency=1
+Glow.Image="rbxassetid://5028857084"
+Glow.ImageTransparency=0.6
+Glow.ImageColor3=ACCENT
+Glow.Parent=Entrance
+
+local Title = Instance.new("TextLabel")
+Title.BackgroundTransparency=1
+Title.Size=UDim2.new(1,0,0,80)
+Title.Position=UDim2.new(0,0,0.45,0)
+Title.Font=Enum.Font.GothamBlack
+Title.Text="GXScript Hub"
+Title.TextColor3=TEXT
+Title.TextSize=54
+Title.Parent=Entrance
+
+local Sub = Instance.new("TextLabel")
+Sub.BackgroundTransparency=1
+Sub.Size=UDim2.new(1,0,0,24)
+Sub.Position=UDim2.new(0,0,0.55,10)
+Sub.Font=Enum.Font.Gotham
+Sub.Text="Loading..."
+Sub.TextColor3=Color3.fromRGB(190,230,205)
+Sub.TextSize=18
+Sub.Parent=Entrance
+
+-- Animate Entrance
+Title.TextTransparency=1
+Sub.TextTransparency=1
+Glow.ImageTransparency=1
+TweenService:Create(Title,TweenInfo.new(0.5,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),{TextTransparency=0}):Play()
+TweenService:Create(Sub,TweenInfo.new(0.6,Enum.EasingStyle.Quad,Enum.EasingDirection.Out,0,false,0.1),{TextTransparency=0}):Play()
+TweenService:Create(Glow,TweenInfo.new(0.8,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),{ImageTransparency=0.6}):Play()
+
+task.delay(1.5,function()
+    TweenService:Create(Entrance,TweenInfo.new(0.5),{BackgroundTransparency=1}):Play()
+    TweenService:Create(Title,TweenInfo.new(0.4),{TextTransparency=1}):Play()
+    TweenService:Create(Sub,TweenInfo.new(0.4),{TextTransparency=1}):Play()
+    TweenService:Create(Glow,TweenInfo.new(0.4),{ImageTransparency=1}):Play()
+    task.wait(0.5)
+    Entrance:Destroy()
+end)
+
+----------------------------------------------------------------
+-- Main Window
+----------------------------------------------------------------
+local Main = Instance.new("Frame")
+Main.Size=UDim2.fromOffset(560,360)
+Main.Position=UDim2.new(0.5,-280,0.5,-180)
+Main.BackgroundColor3=BG
+Main.BorderSizePixel=0
+Main.Visible=false -- show after entrance
+Main.Parent=SG
+corner(Main,16)
+stroke(Main,1.6,Color3.fromRGB(70,70,70),0.35)
+makeDraggable(Main)
+
+-- Top Bar
+local Top = Instance.new("Frame")
+Top.Size=UDim2.new(1,0,0,50)
+Top.BackgroundColor3=BG_SOFT
+Top.Parent=Main
+corner(Top,16)
+stroke(Top,1,Color3.fromRGB(80,80,80),0.25)
+
+local Logo = Instance.new("Frame")
+Logo.Size=UDim2.fromOffset(36,36)
+Logo.Position=UDim2.new(0,10,0,7)
+Logo.BackgroundColor3=ACCENT_DARK
+Logo.Parent=Top
+corner(Logo,10)
+stroke(Logo,1,ACCENT,0.2)
+
+local GX = Instance.new("TextLabel")
+GX.BackgroundTransparency=1
+GX.Size=UDim2.fromScale(1,1)
+GX.Text="GX"
+GX.Font=Enum.Font.GothamBlack
+GX.TextSize=20
+GX.TextColor3=TEXT
+GX.Parent=Logo
+
+local TitleSmall = Instance.new("TextLabel")
+TitleSmall.BackgroundTransparency=1
+TitleSmall.Size=UDim2.new(1,-120,1,0)
+TitleSmall.Position=UDim2.new(0,56,0,0)
+TitleSmall.TextXAlignment=Enum.TextXAlignment.Left
+TitleSmall.Font=Enum.Font.GothamBold
+TitleSmall.TextSize=20
+TitleSmall.TextColor3=TEXT
+TitleSmall.Text="GXScript Hub"
+TitleSmall.Parent=Top
+
+-- Tabs Frame
+local Tabs = Instance.new("Frame")
+Tabs.Size=UDim2.new(1,-20,0,42)
+Tabs.Position=UDim2.new(0,10,0,60)
+Tabs.BackgroundTransparency=1
+Tabs.Parent=Main
+
+-- Pages container
+local Pages = Instance.new("Frame")
+Pages.Size=UDim2.new(1,-20,1,-120)
+Pages.Position=UDim2.new(0,10,0,106)
+Pages.BackgroundTransparency=1
+Pages.Parent=Main
+
+-- Helper: create tab and page
+local function createPage(name, idx)
+    local btn=Instance.new("TextButton")
+    btn.Size=UDim2.fromOffset(128,36)
+    btn.Position=UDim2.new(0,(idx-1)*(128+8),0,3)
+    btn.BackgroundColor3=ACCENT_DARK
+    btn.Text=name
+    btn.TextColor3=TEXT
+    btn.Font=Enum.Font.GothamBold
+    btn.TextSize=14
+    btn.Parent=Tabs
+    corner(btn,10)
+    stroke(btn,1,Color3.fromRGB(90,120,90),0.25)
+    gradient(btn,ACCENT_DARK,ACCENT)
+    local page=Instance.new("Frame")
+    page.Size=UDim2.fromScale(1,1)
+    page.BackgroundTransparency=1
+    page.Visible=false
+    page.Parent=Pages
+    return btn,page
+end
+
+local T_Main,P_Main=createPage("Main",1)
+local T_Player,P_Player=createPage("Player",2)
+local T_Util,P_Util=createPage("Utilities",3)
+local T_Set,P_Set=createPage("Settings",4)
+
+local function showPage(pg,btn)
+    for _,f in ipairs(Pages:GetChildren()) do if f:IsA("Frame") then f.Visible=false end end
+    for _,b in ipairs(Tabs:GetChildren()) do if b:IsA("TextButton") then b.BackgroundColor3=ACCENT_DARK end end
+    pg.Visible=true
+    btn.BackgroundColor3=ACCENT
+end
+
+showPage(P_Main,T_Main)
+T_Main.MouseButton1Click:Connect(function() showPage(P_Main,T_Main) end)
+T_Player.MouseButton1Click:Connect(function() showPage(P_Player,T_Player) end)
+T_Util.MouseButton1Click:Connect(function() showPage(P_Util,T_Util) end)
+T_Set.MouseButton1Click:Connect(function() showPage(P_Set,T_Set) end)
+
+----------------------------------------------------------------
+-- Main Page: Spawner Button
+----------------------------------------------------------------
+local lbl = Instance.new("TextLabel")
+lbl.BackgroundTransparency=1
+lbl.Size=UDim2.new(1,-24,0,24)
+lbl.Position=UDim2.new(0,12,0,12)
+lbl.Font=Enum.Font.Gotham
+lbl.TextXAlignment=Enum.TextXAlignment.Left
+lbl.TextSize=14
+lbl.TextColor3=TEXT
+lbl.Text="Spawner (Pets / Eggs / Seeds)"
+lbl.Parent=P_Main
+
+local SpawnBtn = Instance.new("TextButton")
+SpawnBtn.Size=UDim2.new(0,260,0,40)
+SpawnBtn.Position=UDim2.new(0,12,0,48)
+SpawnBtn.BackgroundColor3=ACCENT_DARK
+SpawnBtn.Text="Run Spawner"
+SpawnBtn.TextColor3=TEXT
+SpawnBtn.Font=Enum.Font.GothamBold
+SpawnBtn.TextSize=16
+SpawnBtn.Parent=P_Main
+corner(SpawnBtn,10)
+stroke(SpawnBtn,1,Color3.fromRGB(90,120,90),0.25)
+gradient(SpawnBtn,ACCENT_DARK,ACCENT)
+
+SpawnBtn.MouseEnter:Connect(function() SpawnBtn.BackgroundColor3=ACCENT end)
+SpawnBtn.MouseLeave:Connect(function() SpawnBtn.BackgroundColor3=ACCENT_DARK end)
+
+SpawnBtn.MouseButton1Click:Connect(function()
+    local ok, err = pcall(function()
+        local Spawner = loadstring(game:HttpGet("https://gitlab.com/darkiedarkie/dark/-/raw/main/Spawner.lua"))()
+        if typeof(Spawner)=="table" and Spawner.Load then Spawner.Load() else if typeof(Spawner)=="function" then Spawner() end end
+    end)
+    if ok then notify("Spawner loaded.") else notify("Spawner error: "..tostring(err),5) end
+end)
+
+----------------------------------------------------------------
+-- Toggle UI button (draggable)
+----------------------------------------------------------------
+local ToggleUI = Instance.new("TextButton")
+ToggleUI.Size=UDim2.new(0,64,0,64)
+ToggleUI.Position=UDim2.new(0.05,0,0.6,0)
+ToggleUI.BackgroundColor3=ACCENT_DARK
+ToggleUI.Text="GX"
+ToggleUI.TextColor3=TEXT
+ToggleUI.Font=Enum.Font.GothamBlack
+ToggleUI.TextSize=20
+ToggleUI.Parent=SG
+corner(ToggleUI,18)
+stroke(ToggleUI,1,ACCENT,0.25)
+makeDraggable(ToggleUI)
+
+ToggleUI.MouseButton1Click:Connect(function()
+    Main.Visible=not Main.Visible
+end)
+
+-- Show Main UI after Entrance
+task.delay(2,function()
+    Main.Visible=true
+end)
+
+notify("GXScript Hub loaded. Press RightShift to toggle.")        end
     end)
     frame.InputChanged:Connect(function(inp)
         if inp.UserInputType == Enum.UserInputType.MouseMovement then inputDrag = inp end
