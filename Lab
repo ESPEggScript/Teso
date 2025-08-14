@@ -1,43 +1,52 @@
---// GXScript Hub — Green Tech UI (no fake loading)
---// Made for: Pets/Eggs/Seeds spawner + player & utility tools
+--== GXScript Hub (Elegant Neon) ==--
 
 -- Clean previous
-pcall(function()
-    if game.CoreGui:FindFirstChild("GXScriptHub") then
-        game.CoreGui.GXScriptHub:Destroy()
-    end
-end)
+pcall(function() if game.CoreGui:FindFirstChild("GXScriptHub") then game.CoreGui.GXScriptHub:Destroy() end end)
 
--- Services
+-- Services / refs
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
+local RS = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
 local StarterGui = game:GetService("StarterGui")
-
 local LP = Players.LocalPlayer
 
--- THEME
-local ACCENT = Color3.fromRGB(40, 200, 80)        -- neon-ish green
-local ACCENT_DARK = Color3.fromRGB(30, 120, 55)   -- darker green
-local BG = Color3.fromRGB(20, 20, 20)
-local BG_SOFT = Color3.fromRGB(28, 28, 28)
-local TEXT = Color3.fromRGB(230, 250, 230)
+-- Theme
+local ACCENT = Color3.fromRGB(40, 220, 120)
+local ACCENT_DARK = Color3.fromRGB(20, 130, 80)
+local BG = Color3.fromRGB(16, 16, 16)
+local BG_SOFT = Color3.fromRGB(24, 24, 24)
+local TEXT = Color3.fromRGB(235, 255, 245)
 
--- Helpers
-local function notify(t, d)
-    pcall(function()
-        StarterGui:SetCore("SendNotification", {Title="GXScript", Text=t, Duration=d or 3})
-    end)
+local function notify(msg, t)
+	pcall(function() StarterGui:SetCore("SendNotification", {Title="GXScript", Text=msg, Duration=t or 3}) end)
 end
 
-local function addCorner(i, r) local c = Instance.new("UICorner"); c.CornerRadius = UDim.new(0, r or 10); c.Parent = i end
-local function addStroke(i, th, col, trans)
-    local s = Instance.new("UIStroke")
-    s.Thickness = th or 1
-    s.Color = col or Color3.fromRGB(60,60,60)
-    s.Transparency = trans or 0.2
-    s.Parent = i
-    return s
+local function corner(p, r) local c=Instance.new("UICorner"); c.CornerRadius=UDim.new(0, r or 10); c.Parent=p end
+local function stroke(p, th, col, tr) local s=Instance.new("UIStroke"); s.Thickness=th or 1; s.Color=col or Color3.fromRGB(60,60,60); s.Transparency=tr or 0.15; s.ApplyStrokeMode=Enum.ApplyStrokeMode.Border; s.Parent=p end
+
+-- Drag helper
+local function makeDraggable(frame)
+	local dragging, dragInput, startPos, startInputPos
+	frame.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			dragging = true
+			startPos = frame.Position
+			startInputPos = input.Position
+			input.Changed:Connect(function()
+				if input.UserInputState == Enum.UserInputState.End then dragging = false end
+			end)
+		end
+	end)
+	frame.InputChanged:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then dragInput = input end
+	end)
+	UIS.InputChanged:Connect(function(input)
+		if input == dragInput and dragging then
+			local delta = input.Position - startInputPos
+			frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+		end
+	end)
 end
 
 -- ScreenGui
@@ -47,501 +56,522 @@ SG.ResetOnSpawn = false
 SG.IgnoreGuiInset = true
 SG.Parent = game.CoreGui
 
--- Main window
-local Main = Instance.new("Frame")
-Main.Size = UDim2.fromOffset(520, 320)
-Main.Position = UDim2.new(0.5, -260, 0.5, -160)
-Main.BackgroundColor3 = BG
-Main.Active = true
-Main.Draggable = true
-Main.Parent = SG
-addCorner(Main, 14)
-addStroke(Main, 1.5, Color3.fromRGB(70,70,70), 0.35)
+----------------------------------------------------------------
+-- Splash
+----------------------------------------------------------------
+local Splash = Instance.new("Frame")
+Splash.Size = UDim2.fromScale(1,1)
+Splash.BackgroundColor3 = BG
+Splash.Parent = SG
 
--- Title bar
+local Glow = Instance.new("ImageLabel")
+Glow.Size = UDim2.new(0, 600, 0, 600)
+Glow.Position = UDim2.new(0.5, -300, 0.5, -300)
+Glow.BackgroundTransparency = 1
+Glow.Image = "rbxassetid://5028857084" -- soft glow circle
+Glow.ImageTransparency = 0.3
+Glow.ImageColor3 = ACCENT
+Glow.Parent = Splash
+
+local Title = Instance.new("TextLabel")
+Title.BackgroundTransparency = 1
+Title.Size = UDim2.new(1, 0, 0, 80)
+Title.Position = UDim2.new(0, 0, 0.45, 0)
+Title.Font = Enum.Font.GothamBlack
+Title.Text = "GXScript Hub"
+Title.TextColor3 = TEXT
+Title.TextSize = 54
+Title.Parent = Splash
+
+local Sub = Instance.new("TextLabel")
+Sub.BackgroundTransparency = 1
+Sub.Size = UDim2.new(1, 0, 0, 24)
+Sub.Position = UDim2.new(0, 0, 0.55, 10)
+Sub.Font = Enum.Font.Gotham
+Sub.Text = "Made by GXScript Hub"
+Sub.TextColor3 = Color3.fromRGB(190, 230, 205)
+Sub.TextSize = 18
+Sub.Parent = Splash
+
+-- Splash animate
+Title.TextTransparency = 1
+Sub.TextTransparency = 1
+Glow.ImageTransparency = 1
+TweenService:Create(Title, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {TextTransparency=0}):Play()
+TweenService:Create(Sub, TweenInfo.new(0.6, Enum.EasingStyle.Quad, Enum.EasingDirection.Out, 0, false, 0.1), {TextTransparency=0}):Play()
+TweenService:Create(Glow, TweenInfo.new(0.8, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {ImageTransparency=0.3}):Play()
+
+task.delay(1.2, function()
+	TweenService:Create(Splash, TweenInfo.new(0.5), {BackgroundTransparency=1}):Play()
+	TweenService:Create(Title, TweenInfo.new(0.4), {TextTransparency=1}):Play()
+	TweenService:Create(Sub, TweenInfo.new(0.4), {TextTransparency=1}):Play()
+	TweenService:Create(Glow, TweenInfo.new(0.4), {ImageTransparency=1}):Play()
+	task.wait(0.5)
+	Splash:Destroy()
+end)
+
+----------------------------------------------------------------
+-- Main Window
+----------------------------------------------------------------
+local Main = Instance.new("Frame")
+Main.Size = UDim2.fromOffset(560, 360)
+Main.Position = UDim2.new(0.5, -280, 0.5, -180)
+Main.BackgroundColor3 = BG
+Main.BorderSizePixel = 0
+Main.Parent = SG
+corner(Main, 16)
+stroke(Main, 1.6, Color3.fromRGB(70,70,70), 0.35)
+
 local Top = Instance.new("Frame")
-Top.Size = UDim2.new(1, 0, 0, 48)
+Top.Size = UDim2.new(1, 0, 0, 50)
 Top.BackgroundColor3 = BG_SOFT
 Top.Parent = Main
-addCorner(Top, 14)
-addStroke(Top, 1, Color3.fromRGB(80,80,80), 0.25)
+corner(Top, 16)
+stroke(Top, 1, Color3.fromRGB(80,80,80), 0.25)
 
--- Logo + Title
 local Logo = Instance.new("Frame")
 Logo.Size = UDim2.fromOffset(36, 36)
-Logo.Position = UDim2.new(0, 10, 0, 6)
+Logo.Position = UDim2.new(0, 10, 0, 7)
 Logo.BackgroundColor3 = ACCENT_DARK
 Logo.Parent = Top
-addCorner(Logo, 8)
+corner(Logo, 10)
+stroke(Logo, 1, ACCENT, 0.2)
 
 local GX = Instance.new("TextLabel")
-GX.Size = UDim2.fromScale(1, 1)
 GX.BackgroundTransparency = 1
+GX.Size = UDim2.fromScale(1,1)
 GX.Text = "GX"
 GX.Font = Enum.Font.GothamBlack
 GX.TextSize = 20
 GX.TextColor3 = TEXT
 GX.Parent = Logo
 
-local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, -120, 1, 0)
-Title.Position = UDim2.new(0, 56, 0, 0)
-Title.BackgroundTransparency = 1
-Title.Text = "GXScript Hub"
-Title.TextXAlignment = Enum.TextXAlignment.Left
-Title.Font = Enum.Font.GothamBold
-Title.TextSize = 20
-Title.TextColor3 = TEXT
-Title.Parent = Top
+local TitleSmall = Instance.new("TextLabel")
+TitleSmall.BackgroundTransparency = 1
+TitleSmall.Size = UDim2.new(1, -120, 1, 0)
+TitleSmall.Position = UDim2.new(0, 56, 0, 0)
+TitleSmall.TextXAlignment = Enum.TextXAlignment.Left
+TitleSmall.Font = Enum.Font.GothamBold
+TitleSmall.TextSize = 20
+TitleSmall.TextColor3 = TEXT
+TitleSmall.Text = "GXScript Hub"
+TitleSmall.Parent = Top
 
--- Close
 local Close = Instance.new("TextButton")
 Close.Size = UDim2.fromOffset(36, 36)
-Close.Position = UDim2.new(1, -46, 0, 6)
-Close.BackgroundColor3 = Color3.fromRGB(70, 30, 30)
+Close.Position = UDim2.new(1, -46, 0, 7)
+Close.BackgroundColor3 = Color3.fromRGB(160, 35, 35)
 Close.Text = "✕"
-Close.TextColor3 = Color3.fromRGB(255, 160, 160)
+Close.TextColor3 = Color3.fromRGB(255, 205, 205)
 Close.Font = Enum.Font.GothamBold
 Close.TextSize = 18
 Close.Parent = Top
-addCorner(Close, 10)
-addStroke(Close, 1, Color3.fromRGB(120,60,60), 0.35)
+corner(Close, 10)
+stroke(Close, 1, Color3.fromRGB(200,80,80), 0.35)
 Close.MouseButton1Click:Connect(function() SG:Destroy() end)
 
--- Tab bar
+-- Tabs
 local Tabs = Instance.new("Frame")
-Tabs.Size = UDim2.new(1, -20, 0, 40)
-Tabs.Position = UDim2.new(0, 10, 0, 56)
+Tabs.Size = UDim2.new(1, -20, 0, 42)
+Tabs.Position = UDim2.new(0, 10, 0, 60)
 Tabs.BackgroundTransparency = 1
 Tabs.Parent = Main
 
-local function makeTabButton(txt, xIndex)
-    local b = Instance.new("TextButton")
-    b.Size = UDim2.fromOffset(120, 36)
-    b.Position = UDim2.new(0, (xIndex-1) * (120 + 8), 0, 2)
-    b.BackgroundColor3 = ACCENT_DARK
-    b.Text = txt
-    b.TextColor3 = TEXT
-    b.Font = Enum.Font.GothamBold
-    b.TextSize = 14
-    b.Parent = Tabs
-    addCorner(b, 10)
-    addStroke(b, 1, Color3.fromRGB(90,120,90), 0.25)
-    b.MouseEnter:Connect(function() b.BackgroundColor3 = ACCENT end)
-    b.MouseLeave:Connect(function() b.BackgroundColor3 = ACCENT_DARK end)
-    return b
+local function tabBtn(txt, idx)
+	local b = Instance.new("TextButton")
+	b.Size = UDim2.fromOffset(128, 36)
+	b.Position = UDim2.new(0, (idx-1)*(128+8), 0, 3)
+	b.BackgroundColor3 = ACCENT_DARK
+	b.Text = txt
+	b.TextColor3 = TEXT
+	b.Font = Enum.Font.GothamBold
+	b.TextSize = 14
+	b.Parent = Tabs
+	corner(b, 10)
+	stroke(b, 1, Color3.fromRGB(90,120,90), 0.25)
+	b.MouseEnter:Connect(function() b.BackgroundColor3 = ACCENT end)
+	b.MouseLeave:Connect(function() if b:GetAttribute("active") ~= true then b.BackgroundColor3 = ACCENT_DARK end end)
+	return b
 end
 
--- Content container
 local Pages = Instance.new("Frame")
-Pages.Size = UDim2.new(1, -20, 1, -110)
-Pages.Position = UDim2.new(0, 10, 0, 100)
+Pages.Size = UDim2.new(1, -20, 1, -120)
+Pages.Position = UDim2.new(0, 10, 0, 106)
 Pages.BackgroundColor3 = BG_SOFT
 Pages.Parent = Main
-addCorner(Pages, 12)
+corner(Pages, 14)
 
-local function makePage()
-    local p = Instance.new("Frame")
-    p.Size = UDim2.fromScale(1,1)
-    p.BackgroundTransparency = 1
-    p.Visible = false
-    p.Parent = Pages
-    return p
+local function page()
+	local p = Instance.new("Frame")
+	p.Size = UDim2.fromScale(1,1)
+	p.BackgroundTransparency = 1
+	p.Visible = false
+	p.Parent = Pages
+	return p
 end
 
--- Create pages
-local Page_Main = makePage()
-local Page_Player = makePage()
-local Page_Util = makePage()
-local Page_Settings = makePage()
+local P_Main = page()
+local P_Player = page()
+local P_Util = page()
+local P_Set = page()
 
--- Tab buttons
-local Tab1 = makeTabButton("Main", 1)
-local Tab2 = makeTabButton("Player", 2)
-local Tab3 = makeTabButton("Utilities", 3)
-local Tab4 = makeTabButton("Settings", 4)
+local T_Main = tabBtn("Main", 1)
+local T_Player = tabBtn("Player", 2)
+local T_Util = tabBtn("Utilities", 3)
+local T_Set = tabBtn("Settings", 4)
 
-local function showPage(p)
-    for _,f in ipairs(Pages:GetChildren()) do
-        if f:IsA("Frame") then f.Visible = false end
-    end
-    p.Visible = true
+local function show(pg, btn)
+	for _, f in ipairs(Pages:GetChildren()) do if f:IsA("Frame") then f.Visible = false end end
+	for _, b in ipairs(Tabs:GetChildren()) do if b:IsA("TextButton") then b:SetAttribute("active", false); b.BackgroundColor3 = ACCENT_DARK end end
+	pg.Visible = true
+	btn:SetAttribute("active", true)
+	btn.BackgroundColor3 = ACCENT
 end
-showPage(Page_Main)
 
-Tab1.MouseButton1Click:Connect(function() showPage(Page_Main) end)
-Tab2.MouseButton1Click:Connect(function() showPage(Page_Player) end)
-Tab3.MouseButton1Click:Connect(function() showPage(Page_Util) end)
-Tab4.MouseButton1Click:Connect(function() showPage(Page_Settings) end)
+show(P_Main, T_Main)
+
+T_Main.MouseButton1Click:Connect(function() show(P_Main, T_Main) end)
+T_Player.MouseButton1Click:Connect(function() show(P_Player, T_Player) end)
+T_Util.MouseButton1Click:Connect(function() show(P_Util, T_Util) end)
+T_Set.MouseButton1Click:Connect(function() show(P_Set, T_Set) end)
 
 ----------------------------------------------------------------
--- MAIN PAGE (Darkie spawner hookup)
+-- Main: Spawner
 ----------------------------------------------------------------
-local info1 = Instance.new("TextLabel")
-info1.BackgroundTransparency = 1
-info1.Position = UDim2.new(0, 14, 0, 16)
-info1.Size = UDim2.new(1, -28, 0, 24)
-info1.TextXAlignment = Enum.TextXAlignment.Left
-info1.Font = Enum.Font.Gotham
-info1.TextSize = 14
-info1.Text = "Spawner (Darkie GitLab)"
-info1.TextColor3 = TEXT
-info1.Parent = Page_Main
+local lbl = Instance.new("TextLabel")
+lbl.BackgroundTransparency = 1
+lbl.Size = UDim2.new(1, -24, 0, 24)
+lbl.Position = UDim2.new(0, 12, 0, 14)
+lbl.Font = Enum.Font.Gotham
+lbl.TextXAlignment = Enum.TextXAlignment.Left
+lbl.TextSize = 14
+lbl.TextColor3 = TEXT
+lbl.Text = "Spawner (Pets / Eggs / Seeds)"
+lbl.Parent = P_Main
 
 local SpawnBtn = Instance.new("TextButton")
-SpawnBtn.Size = UDim2.new(0, 220, 0, 40)
-SpawnBtn.Position = UDim2.new(0, 14, 0, 50)
+SpawnBtn.Size = UDim2.new(0, 260, 0, 40)
+SpawnBtn.Position = UDim2.new(0, 12, 0, 48)
 SpawnBtn.BackgroundColor3 = ACCENT_DARK
-SpawnBtn.Text = "Run Spawner (Pets, Eggs, Seeds)"
+SpawnBtn.Text = "Run Spawner"
 SpawnBtn.TextColor3 = TEXT
 SpawnBtn.Font = Enum.Font.GothamBold
-SpawnBtn.TextSize = 14
-SpawnBtn.Parent = Page_Main
-addCorner(SpawnBtn, 10)
-addStroke(SpawnBtn, 1, Color3.fromRGB(90,120,90), 0.25)
+SpawnBtn.TextSize = 16
+SpawnBtn.Parent = P_Main
+corner(SpawnBtn, 10); stroke(SpawnBtn, 1, Color3.fromRGB(90,120,90), 0.25)
 SpawnBtn.MouseEnter:Connect(function() SpawnBtn.BackgroundColor3 = ACCENT end)
-SpawnBtn.MouseLeave:Connect(function() SpawnBtn.BackgroundColor3 = ACCENT_DARK end)
+SpawnBtn.MouseLeave:Connect(function() if SpawnBtn.AutoButtonColor ~= false then SpawnBtn.BackgroundColor3 = ACCENT_DARK end end)
 
 SpawnBtn.MouseButton1Click:Connect(function()
-    -- Same working flow as your original
-    local Spawner = loadstring(game:HttpGet("https://gitlab.com/darkiedarkie/dark/-/raw/main/Spawner.lua"))()
-    local ok, err = pcall(function()
-        Spawner.Load()
-    end)
-    if ok then
-        notify("Spawner loaded.")
-    else
-        notify("Spawner error: "..tostring(err), 5)
-    end
+	local ok, err = pcall(function()
+		local Spawner = loadstring(game:HttpGet("https://gitlab.com/darkiedarkie/dark/-/raw/main/Spawner.lua"))()
+		if typeof(Spawner) == "table" and Spawner.Load then
+			Spawner.Load()
+		else
+			-- some builds return a function: call it
+			if typeof(Spawner) == "function" then Spawner() end
+		end
+	end)
+	if ok then notify("Spawner loaded.") else notify("Spawner error: "..tostring(err), 5) end
 end)
 
--- Credits
 local credit = Instance.new("TextLabel")
 credit.BackgroundTransparency = 1
-credit.Size = UDim2.new(1, -28, 0, 20)
-credit.Position = UDim2.new(0, 14, 1, -28)
+credit.Size = UDim2.new(1, -24, 0, 20)
+credit.Position = UDim2.new(0, 12, 1, -28)
 credit.Font = Enum.Font.Gotham
 credit.TextXAlignment = Enum.TextXAlignment.Left
 credit.TextSize = 12
-credit.Text = "Made by -Panda • UI by GXScript"
-credit.TextColor3 = Color3.fromRGB(180, 220, 180)
-credit.Parent = Page_Main
+credit.TextColor3 = Color3.fromRGB(180, 220, 190)
+credit.Text = "Made by GXScript Hub"
+credit.Parent = P_Main
 
 ----------------------------------------------------------------
--- PLAYER PAGE (speed, jump, inf jump, noclip, fly)
+-- Player: WalkSpeed / Jump / Fly / Noclip / Inf Jump
 ----------------------------------------------------------------
+local function group(parent, title, y, h)
+	local box = Instance.new("Frame")
+	box.Size = UDim2.new(1, -24, 0, h or 110)
+	box.Position = UDim2.new(0, 12, 0, y)
+	box.BackgroundColor3 = BG
+	box.Parent = parent
+	corner(box, 12); stroke(box, 1, Color3.fromRGB(70,70,70), 0.25)
 
-local function makeGroup(parent, title, y)
-    local box = Instance.new("Frame")
-    box.Size = UDim2.new(1, -28, 0, 96)
-    box.Position = UDim2.new(0, 14, 0, y)
-    box.BackgroundColor3 = BG
-    box.Parent = parent
-    addCorner(box, 10)
-    addStroke(box, 1, Color3.fromRGB(70,70,70), 0.25)
-
-    local lbl = Instance.new("TextLabel")
-    lbl.BackgroundTransparency = 1
-    lbl.Size = UDim2.new(1, -16, 0, 22)
-    lbl.Position = UDim2.new(0, 8, 0, 6)
-    lbl.Font = Enum.Font.GothamBold
-    lbl.TextXAlignment = Enum.TextXAlignment.Left
-    lbl.TextSize = 14
-    lbl.TextColor3 = TEXT
-    lbl.Text = title
-    lbl.Parent = box
-
-    return box
+	local t = Instance.new("TextLabel")
+	t.BackgroundTransparency = 1
+	t.Size = UDim2.new(1, -16, 0, 22)
+	t.Position = UDim2.new(0, 8, 0, 6)
+	t.Font = Enum.Font.GothamBold
+	t.TextXAlignment = Enum.TextXAlignment.Left
+	t.TextSize = 14
+	t.TextColor3 = TEXT
+	t.Text = title
+	t.Parent = box
+	return box
 end
 
--- Walk/Jump
-local statsBox = makeGroup(Page_Player, "Character Stats", 12)
+local stats = group(P_Player, "Character Stats", 12, 110)
 
-local WSBox = Instance.new("TextBox")
-WSBox.Size = UDim2.new(0, 90, 0, 28)
-WSBox.Position = UDim2.new(0, 8, 0, 36)
-WSBox.BackgroundColor3 = BG_SOFT
-WSBox.Text = "16"
-WSBox.PlaceholderText = "WalkSpeed"
-WSBox.TextColor3 = TEXT
-WSBox.Font = Enum.Font.Gotham
-WSBox.TextSize = 14
-WSBox.Parent = statsBox
-addCorner(WSBox, 8)
+local WS = Instance.new("TextBox")
+WS.Size = UDim2.new(0, 100, 0, 30)
+WS.Position = UDim2.new(0, 8, 0, 40)
+WS.BackgroundColor3 = BG_SOFT
+WS.PlaceholderText = "WalkSpeed"
+WS.Text = "16"
+WS.TextColor3 = TEXT
+WS.Font = Enum.Font.Gotham
+WS.TextSize = 14
+WS.Parent = stats
+corner(WS, 8)
 
-local JPBox = WSBox:Clone()
-JPBox.Position = UDim2.new(0, 108, 0, 36)
-JPBox.Text = "50"
-JPBox.PlaceholderText = "JumpPower"
-JPBox.Parent = statsBox
+local JP = WS:Clone()
+JP.Position = UDim2.new(0, 116, 0, 40)
+JP.PlaceholderText = "JumpPower"
+JP.Text = "50"
+JP.Parent = stats
 
-local ApplyStats = Instance.new("TextButton")
-ApplyStats.Size = UDim2.new(0, 100, 0, 28)
-ApplyStats.Position = UDim2.new(0, 208, 0, 36)
-ApplyStats.BackgroundColor3 = ACCENT_DARK
-ApplyStats.Text = "Apply"
-ApplyStats.TextColor3 = TEXT
-ApplyStats.Font = Enum.Font.GothamBold
-ApplyStats.TextSize = 14
-ApplyStats.Parent = statsBox
-addCorner(ApplyStats, 8)
-addStroke(ApplyStats, 1, Color3.fromRGB(90,120,90), 0.25)
-ApplyStats.MouseEnter:Connect(function() ApplyStats.BackgroundColor3 = ACCENT end)
-ApplyStats.MouseLeave:Connect(function() ApplyStats.BackgroundColor3 = ACCENT_DARK end)
-
-ApplyStats.MouseButton1Click:Connect(function()
-    local char = LP.Character or LP.CharacterAdded:Wait()
-    local hum = char:FindFirstChildWhichIsA("Humanoid")
-    if hum then
-        local ws = tonumber(WSBox.Text) or 16
-        local jp = tonumber(JPBox.Text) or 50
-        hum.WalkSpeed = ws
-        hum.JumpPower = jp
-        hum.UseJumpPower = true
-        notify(("WS=%d, JP=%d applied."):format(ws, jp))
-    else
-        notify("No humanoid found.")
-    end
+local Apply = Instance.new("TextButton")
+Apply.Size = UDim2.new(0, 120, 0, 30)
+Apply.Position = UDim2.new(0, 224, 0, 40)
+Apply.BackgroundColor3 = ACCENT_DARK
+Apply.Text = "Apply"
+Apply.TextColor3 = TEXT
+Apply.Font = Enum.Font.GothamBold
+Apply.TextSize = 14
+Apply.Parent = stats
+corner(Apply, 8); stroke(Apply, 1, Color3.fromRGB(90,120,90), 0.25)
+Apply.MouseEnter:Connect(function() Apply.BackgroundColor3 = ACCENT end)
+Apply.MouseLeave:Connect(function() Apply.BackgroundColor3 = ACCENT_DARK end)
+Apply.MouseButton1Click:Connect(function()
+	local char = LP.Character or LP.CharacterAdded:Wait()
+	local hum = char:FindFirstChildWhichIsA("Humanoid")
+	if hum then
+		hum.WalkSpeed = tonumber(WS.Text) or 16
+		hum.JumpPower = tonumber(JP.Text) or 50
+		hum.UseJumpPower = true
+		notify(("WS=%d, JP=%d"):format(hum.WalkSpeed, hum.JumpPower))
+	end
 end)
 
--- Toggles
-local toggleBox = makeGroup(Page_Player, "Toggles", 122)
-toggleBox.Size = UDim2.new(1, -28, 0, 132)
+local toggles = group(P_Player, "Movement Toggles", 128, 160)
 
-local function makeToggle(parent, label, col, x, y)
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0, 150, 0, 30)
-    btn.Position = UDim2.new(0, x, 0, y)
-    btn.BackgroundColor3 = col
-    btn.Text = label..": OFF"
-    btn.TextColor3 = TEXT
-    btn.Font = Enum.Font.GothamBold
-    btn.TextSize = 13
-    btn.Parent = parent
-    addCorner(btn, 8)
-    addStroke(btn, 1, Color3.fromRGB(90,120,90), 0.25)
-    local state = false
-    btn.MouseButton1Click:Connect(function()
-        state = not state
-        btn.Text = label..": "..(state and "ON" or "OFF")
-        btn.BackgroundColor3 = state and ACCENT or col
-        btn:SetAttribute("State", state)
-    end)
-    return btn
+local function toggleBtn(parent, label, x, y)
+	local b = Instance.new("TextButton")
+	b.Size = UDim2.new(0, 160, 0, 32)
+	b.Position = UDim2.new(0, x, 0, y)
+	b.BackgroundColor3 = ACCENT_DARK
+	b.Text = label..": OFF"
+	b.TextColor3 = TEXT
+	b.Font = Enum.Font.GothamBold
+	b.TextSize = 13
+	b.Parent = parent
+	corner(b, 10); stroke(b, 1, Color3.fromRGB(90,120,90), 0.25)
+	b:SetAttribute("State", false)
+	b.MouseButton1Click:Connect(function()
+		local s = not b:GetAttribute("State")
+		b:SetAttribute("State", s)
+		b.Text = label..": "..(s and "ON" or "OFF")
+		b.BackgroundColor3 = s and ACCENT or ACCENT_DARK
+	end)
+	return b
 end
 
 -- Infinite Jump
-local InfJumpBtn = makeToggle(toggleBox, "Infinite Jump", Color3.fromRGB(60,90,60), 8, 36)
-local infJumpConn
-InfJumpBtn:GetAttributeChangedSignal("State"):Connect(function()
-    local on = InfJumpBtn:GetAttribute("State")
-    if on then
-        infJumpConn = UIS.JumpRequest:Connect(function()
-            local char = LP.Character
-            if char and char:FindFirstChildWhichIsA("Humanoid") then
-                char.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
-            end
-        end)
-    else
-        if infJumpConn then infJumpConn:Disconnect() infJumpConn = nil end
-    end
+local IJ = toggleBtn(toggles, "Infinite Jump", 8, 40)
+local IJConn
+IJ:GetAttributeChangedSignal("State"):Connect(function()
+	local on = IJ:GetAttribute("State")
+	if on then
+		IJConn = UIS.JumpRequest:Connect(function()
+			local char = LP.Character
+			if char and char:FindFirstChildWhichIsA("Humanoid") then
+				char.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+			end
+		end)
+	else
+		if IJConn then IJConn:Disconnect(); IJConn=nil end
+	end
 end)
 
 -- Noclip
-local NoclipBtn = makeToggle(toggleBox, "Noclip", Color3.fromRGB(60,90,60), 166, 36)
-local noclipConn
-NoclipBtn:GetAttributeChangedSignal("State"):Connect(function()
-    local on = NoclipBtn:GetAttribute("State")
-    if on then
-        noclipConn = RunService.Stepped:Connect(function()
-            local char = LP.Character
-            if not char then return end
-            for _,v in ipairs(char:GetDescendants()) do
-                if v:IsA("BasePart") then v.CanCollide = false end
-            end
-        end)
-    else
-        if noclipConn then noclipConn:Disconnect() noclipConn = nil end
-    end
+local NC = toggleBtn(toggles, "Noclip", 176, 40)
+local NCConn
+NC:GetAttributeChangedSignal("State"):Connect(function()
+	local on = NC:GetAttribute("State")
+	if on then
+		NCConn = RS.Stepped:Connect(function()
+			local char = LP.Character
+			if not char then return end
+			for _,v in ipairs(char:GetDescendants()) do
+				if v:IsA("BasePart") then v.CanCollide = false end
+			end
+		end)
+	else
+		if NCConn then NCConn:Disconnect(); NCConn=nil end
+	end
 end)
 
--- Fly (simple WASD fly)
-local FlyBtn = makeToggle(toggleBox, "Fly", Color3.fromRGB(60,90,60), 8, 74)
-local flyConn, flyHV, flyGY
-local flySpeed = 60
-
+-- Fly (WASD + Space/Ctrl) with adjustable speed
+local FL = toggleBtn(toggles, "Fly", 8, 80)
 local SpeedBox = Instance.new("TextBox")
-SpeedBox.Size = UDim2.new(0, 70, 0, 30)
-SpeedBox.Position = UDim2.new(0, 166, 0, 74)
+SpeedBox.Size = UDim2.new(0, 80, 0, 32)
+SpeedBox.Position = UDim2.new(0, 176, 0, 80)
 SpeedBox.BackgroundColor3 = BG_SOFT
-SpeedBox.PlaceholderText = "FlySpeed"
-SpeedBox.Text = tostring(flySpeed)
+SpeedBox.PlaceholderText = "Speed"
+SpeedBox.Text = "60"
 SpeedBox.TextColor3 = TEXT
 SpeedBox.Font = Enum.Font.Gotham
 SpeedBox.TextSize = 13
-SpeedBox.Parent = toggleBox
-addCorner(SpeedBox, 8)
+SpeedBox.Parent = toggles
+corner(SpeedBox, 8)
 
+local FlyConn, FlyVel, FlyGyro
 local function stopFly()
-    if flyConn then flyConn:Disconnect(); flyConn = nil end
-    if flyHV then flyHV:Destroy(); flyHV = nil end
-    if flyGY then flyGY:Destroy(); flyGY = nil end
+	if FlyConn then FlyConn:Disconnect(); FlyConn=nil end
+	if FlyVel then FlyVel:Destroy(); FlyVel=nil end
+	if FlyGyro then FlyGyro:Destroy(); FlyGyro=nil end
 end
 
-FlyBtn:GetAttributeChangedSignal("State"):Connect(function()
-    local on = FlyBtn:GetAttribute("State")
-    local char = LP.Character or LP.CharacterAdded:Wait()
-    local hrp = char:WaitForChild("HumanoidRootPart", 2)
-    if not hrp then notify("No HRP."); return end
-    if on then
-        flySpeed = tonumber(SpeedBox.Text) or 60
-        flyHV = Instance.new("BodyVelocity")
-        flyHV.MaxForce = Vector3.new(1e5,1e5,1e5)
-        flyHV.Velocity = Vector3.zero
-        flyHV.Parent = hrp
-
-        flyGY = Instance.new("BodyGyro")
-        flyGY.MaxTorque = Vector3.new(1e5,1e5,1e5)
-        flyGY.C = hrp.CFrame
-        flyGY.Parent = hrp
-
-        flyConn = RunService.RenderStepped:Connect(function()
-            local camCF = workspace.CurrentCamera.CFrame
-            local move = Vector3.new(0,0,0)
-            if UIS:IsKeyDown(Enum.KeyCode.W) then move += camCF.LookVector end
-            if UIS:IsKeyDown(Enum.KeyCode.S) then move -= camCF.LookVector end
-            if UIS:IsKeyDown(Enum.KeyCode.A) then move -= camCF.RightVector end
-            if UIS:IsKeyDown(Enum.KeyCode.D) then move += camCF.RightVector end
-            if UIS:IsKeyDown(Enum.KeyCode.Space) then move += Vector3.new(0,1,0) end
-            if UIS:IsKeyDown(Enum.KeyCode.LeftControl) then move -= Vector3.new(0,1,0) end
-            flyHV.Velocity = move.Magnitude > 0 and move.Unit * flySpeed or Vector3.zero
-            flyGY.C = workspace.CurrentCamera.CFrame
-        end)
-    else
-        stopFly()
-    end
+FL:GetAttributeChangedSignal("State"):Connect(function()
+	local on = FL:GetAttribute("State")
+	local char = LP.Character or LP.CharacterAdded:Wait()
+	local hrp = char:FindFirstChild("HumanoidRootPart")
+	if not hrp then notify("No HumanoidRootPart"); FL:SetAttribute("State", false); FL.Text="Fly: OFF"; return end
+	if on then
+		local spd = tonumber(SpeedBox.Text) or 60
+		FlyVel = Instance.new("BodyVelocity")
+		FlyVel.MaxForce = Vector3.new(1e6,1e6,1e6)
+		FlyVel.Velocity = Vector3.zero
+		FlyVel.Parent = hrp
+		FlyGyro = Instance.new("BodyGyro")
+		FlyGyro.MaxTorque = Vector3.new(1e6,1e6,1e6)
+		FlyGyro.CFrame = hrp.CFrame
+		FlyGyro.Parent = hrp
+		FlyConn = RS.RenderStepped:Connect(function()
+			local cam = workspace.CurrentCamera.CFrame
+			local move = Vector3.zero
+			if UIS:IsKeyDown(Enum.KeyCode.W) then move += cam.LookVector end
+			if UIS:IsKeyDown(Enum.KeyCode.S) then move -= cam.LookVector end
+			if UIS:IsKeyDown(Enum.KeyCode.A) then move -= cam.RightVector end
+			if UIS:IsKeyDown(Enum.KeyCode.D) then move += cam.RightVector end
+			if UIS:IsKeyDown(Enum.KeyCode.Space) then move += Vector3.new(0,1,0) end
+			if UIS:IsKeyDown(Enum.KeyCode.LeftControl) then move -= Vector3.new(0,1,0) end
+			FlyVel.Velocity = (move.Magnitude > 0 and move.Unit or Vector3.zero) * spd
+			FlyGyro.CFrame = cam
+		end)
+	else
+		stopFly()
+	end
 end)
 
 ----------------------------------------------------------------
--- UTILITIES PAGE (FPS Booster)
+-- Utilities: FPS Booster
 ----------------------------------------------------------------
-local utilBox = makeGroup(Page_Util, "Performance", 12)
-utilBox.Size = UDim2.new(1, -28, 0, 120)
+local util = group(P_Util, "Performance", 12, 120)
 
-local BoostBtn = Instance.new("TextButton")
-BoostBtn.Size = UDim2.new(0, 160, 0, 32)
-BoostBtn.Position = UDim2.new(0, 8, 0, 44)
-BoostBtn.BackgroundColor3 = ACCENT_DARK
-BoostBtn.Text = "Enable FPS Boost"
-BoostBtn.TextColor3 = TEXT
-BoostBtn.Font = Enum.Font.GothamBold
-BoostBtn.TextSize = 14
-BoostBtn.Parent = utilBox
-addCorner(BoostBtn, 8)
+local Boost = Instance.new("TextButton")
+Boost.Size = UDim2.new(0, 180, 0, 34)
+Boost.Position = UDim2.new(0, 8, 0, 46)
+Boost.BackgroundColor3 = ACCENT_DARK
+Boost.Text = "Enable FPS Boost"
+Boost.TextColor3 = TEXT
+Boost.Font = Enum.Font.GothamBold
+Boost.TextSize = 14
+Boost.Parent = util
+corner(Boost, 10)
 
-local ResetBtn = BoostBtn:Clone()
-ResetBtn.Position = UDim2.new(0, 176, 0, 44)
-ResetBtn.Text = "Reset FPS Boost"
-ResetBtn.Parent = utilBox
+local Reset = Boost:Clone()
+Reset.Position = UDim2.new(0, 200, 0, 46)
+Reset.Text = "Reset (partial)"
+Reset.Parent = util
 
-local boosted = false
-local storedSettings = {}
-
-local function enableFPSBoost()
-    if boosted then return end
-    boosted = true
-
-    -- store + reduce
-    pcall(function()
-        settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
-    end)
-
-    for _,d in ipairs(workspace:GetDescendants()) do
-        if d:IsA("BasePart") then
-            d.Material = Enum.Material.SmoothPlastic
-            d.Reflectance = 0
-        elseif d:IsA("Decal") or d:IsA("Texture") then
-            d.Transparency = 1
-        elseif d:IsA("ParticleEmitter") or d:IsA("Trail") then
-            d.Enabled = false
-        elseif d:IsA("PointLight") or d:IsA("SpotLight") or d:IsA("SurfaceLight") then
-            d.Enabled = false
-        end
-    end
-    notify("FPS Boost enabled.")
-end
-
-local function resetFPSBoost()
-    boosted = false
-    -- Not all visuals can be fully restored without a full reload,
-    -- but we’ll at least re-enable lights/particles where possible:
-    for _,d in ipairs(workspace:GetDescendants()) do
-        if d:IsA("ParticleEmitter") or d:IsA("Trail") then
-            d.Enabled = true
-        elseif d:IsA("PointLight") or d:IsA("SpotLight") or d:IsA("SurfaceLight") then
-            d.Enabled = true
-        end
-    end
-    notify("Attempted to reset visuals. (Full rejoin may be needed.)")
-end
-
-BoostBtn.MouseButton1Click:Connect(enableFPSBoost)
-ResetBtn.MouseButton1Click:Connect(resetFPSBoost)
-
-----------------------------------------------------------------
--- SETTINGS PAGE (Keybind, theme preview)
-----------------------------------------------------------------
-local setBox = makeGroup(Page_Settings, "Settings", 12)
-setBox.Size = UDim2.new(1, -28, 0, 140)
-
-local KBLabel = Instance.new("TextLabel")
-KBLabel.BackgroundTransparency = 1
-KBLabel.Size = UDim2.new(0, 170, 0, 24)
-KBLabel.Position = UDim2.new(0, 8, 0, 36)
-KBLabel.TextXAlignment = Enum.TextXAlignment.Left
-KBLabel.Font = Enum.Font.Gotham
-KBLabel.TextSize = 14
-KBLabel.TextColor3 = TEXT
-KBLabel.Text = "Toggle UI Key: RightShift"
-KBLabel.Parent = setBox
-
--- Theme preview
-local ThemeSwatch = Instance.new("Frame")
-ThemeSwatch.Size = UDim2.new(0, 100, 0, 28)
-ThemeSwatch.Position = UDim2.new(0, 8, 0, 68)
-ThemeSwatch.BackgroundColor3 = ACCENT
-ThemeSwatch.Parent = setBox
-addCorner(ThemeSwatch, 8)
-
-local SwatchLbl = Instance.new("TextLabel")
-SwatchLbl.BackgroundTransparency = 1
-SwatchLbl.Text = "Accent"
-SwatchLbl.TextColor3 = TEXT
-SwatchLbl.Font = Enum.Font.GothamBold
-SwatchLbl.TextSize = 14
-SwatchLbl.Size = UDim2.new(1,0,1,0)
-SwatchLbl.Parent = ThemeSwatch
-
--- Toggle UI keybind (RightShift)
-local toggled = true
-UIS.InputBegan:Connect(function(input, gpe)
-    if gpe then return end
-    if input.KeyCode == Enum.KeyCode.RightShift then
-        toggled = not toggled
-        Main.Visible = toggled
-    end
+Boost.MouseButton1Click:Connect(function()
+	pcall(function() settings().Rendering.QualityLevel = Enum.QualityLevel.Level01 end)
+	for _,d in ipairs(workspace:GetDescendants()) do
+		if d:IsA("BasePart") then d.Material = Enum.Material.SmoothPlastic; d.Reflectance = 0
+		elseif d:IsA("Decal") or d:IsA("Texture") then d.Transparency = 1
+		elseif d:IsA("ParticleEmitter") or d:IsA("Trail") then d.Enabled = false
+		elseif d:IsA("PointLight") or d:IsA("SpotLight") or d:IsA("SurfaceLight") then d.Enabled = false end
+	end
+	notify("FPS Boost enabled")
 end)
 
--- Safety: clean up when GUI is destroyed
+Reset.MouseButton1Click:Connect(function()
+	for _,d in ipairs(workspace:GetDescendants()) do
+		if d:IsA("ParticleEmitter") or d:IsA("Trail") then d.Enabled = true
+		elseif d:IsA("PointLight") or d:IsA("SpotLight") or d:IsA("SurfaceLight") then d.Enabled = true end
+	end
+	notify("Reset attempted (rejoin may be needed)")
+end)
+
+----------------------------------------------------------------
+-- Settings: Toggle key & theme swatch
+----------------------------------------------------------------
+local set = group(P_Set, "Settings", 12, 140)
+
+local KeyLbl = Instance.new("TextLabel")
+KeyLbl.BackgroundTransparency = 1
+KeyLbl.Size = UDim2.new(0, 220, 0, 24)
+KeyLbl.Position = UDim2.new(0, 8, 0, 44)
+KeyLbl.Font = Enum.Font.Gotham
+KeyLbl.TextXAlignment = Enum.TextXAlignment.Left
+KeyLbl.TextSize = 14
+KeyLbl.TextColor3 = TEXT
+KeyLbl.Text = "Toggle UI Key: RightShift"
+KeyLbl.Parent = set
+
+UIS.InputBegan:Connect(function(i,g)
+	if g then return end
+	if i.KeyCode == Enum.KeyCode.RightShift then
+		Main.Visible = not Main.Visible
+	end
+end)
+
+local Swatch = Instance.new("Frame")
+Swatch.Size = UDim2.new(0, 110, 0, 30)
+Swatch.Position = UDim2.new(0, 8, 0, 78)
+Swatch.BackgroundColor3 = ACCENT
+Swatch.Parent = set
+corner(Swatch, 8)
+local sLbl = Instance.new("TextLabel")
+sLbl.BackgroundTransparency = 1
+sLbl.Size = UDim2.new(1,0,1,0)
+sLbl.Text = "Accent"
+sLbl.Font = Enum.Font.GothamBold
+sLbl.TextSize = 14
+sLbl.TextColor3 = TEXT
+sLbl.Parent = Swatch
+
+----------------------------------------------------------------
+-- Separate Toggle Button (draggable)
+----------------------------------------------------------------
+local ToggleUI = Instance.new("TextButton")
+ToggleUI.Size = UDim2.new(0, 64, 0, 64)
+ToggleUI.Position = UDim2.new(0.05, 0, 0.6, 0)
+ToggleUI.BackgroundColor3 = ACCENT_DARK
+ToggleUI.Text = "GX"
+ToggleUI.TextColor3 = TEXT
+ToggleUI.Font = Enum.Font.GothamBlack
+ToggleUI.TextSize = 20
+ToggleUI.Parent = SG
+corner(ToggleUI, 18)
+stroke(ToggleUI, 1, ACCENT, 0.25)
+makeDraggable(ToggleUI)
+
+ToggleUI.MouseButton1Click:Connect(function()
+	Main.Visible = not Main.Visible
+end)
+
+-- Make main draggable
+makeDraggable(Main)
+
+-- Cleanup safety
 SG.AncestryChanged:Connect(function(_, parent)
-    if parent == nil then
-        -- stop fly, noclip, inf jump
-        stopFly()
-        if noclipConn then noclipConn:Disconnect() end
-        if infJumpConn then infJumpConn:Disconnect() end
-    end
+	if not parent then
+		if IJConn then IJConn:Disconnect() end
+		if NCConn then NCConn:Disconnect() end
+		stopFly()
+	end
 end)
 
--- Done
-notify("GXScript Hub loaded. Use RightShift to toggle.")
-showPage(Page_Main)
+notify("GXScript Hub loaded. Press RightShift to toggle.")
